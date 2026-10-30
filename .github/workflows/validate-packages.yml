@@ -1,0 +1,74 @@
+# Reusable: the checks every package repository runs on its pull requests and on main.
+# Called from saengine-design-codes, saengine-structure-templates and saengine-building-templates:
+#
+#   jobs:
+#     validate:
+#       uses: The-Studio-of-Sadiq/saengine-index/.github/workflows/validate-packages.yml@main
+#       with: { kind: designCode }
+#
+# It runs SAEngine's own validator (saengine codepack validate --kind) on each changed package
+# and the repository checks of scripts/check_packages.py. Defined once, here, so the three
+# repositories never drift apart.
+name: Validate packages
+
+on:
+  workflow_call:
+    inputs:
+      kind:
+        description: designCode, structureTemplate or buildingTemplate
+        required: true
+        type: string
+      saengine-ref:
+        description: The SAEngine branch, tag or commit whose validator is used
+        required: false
+        type: string
+        default: feat/ui-ux-redesign
+      index-ref:
+        description: The saengine-index ref of the scripts (keep it the ref of this workflow)
+        required: false
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the packages
+        uses: actions/checkout@v4
+        with:
+          path: packages
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the index scripts
+        uses: actions/checkout@v4
+        with:
+          repository: The-Studio-of-Sadiq/saengine-index
+          ref: ${{ inputs.index-ref }}
+          path: index
+          persist-credentials: false
+      - name: Check out SAEngine's validator (python/src only)
+        uses: actions/checkout@v4
+        with:
+          repository: The-Studio-of-Sadiq/SAEngine
+          ref: ${{ inputs.saengine-ref }}
+          path: saengine
+          filter: blob:none
+          sparse-checkout: python/src
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the scripts' dependencies
+        run: python -m pip install -r index/requirements.txt
+      - name: Check the packages
+        env:
+          KIND: ${{ inputs.kind }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE" ]; then which="--base $BASE"; else which="--all"; fi
+          python index/scripts/check_packages.py --repo packages --kind "$KIND" \
+            --saengine saengine $which

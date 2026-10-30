@@ -1,0 +1,38 @@
+# Builds index.json from the package repositories' releases and signs it with the TEST KEY
+# (not trusted by release builds). The result is a workflow artifact, never a release: the owner
+# checks it, signs it with the real key offline and publishes it (README, "Publishing the index").
+name: Build index
+
+on:
+  repository_dispatch:
+    types: [packages-released]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r requirements.txt
+      - name: Build index.json
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/build_index.py --out dist/index.json
+      - name: Sign with the TEST KEY (not trusted by release builds)
+        run: |
+          python scripts/sign_index.py sign dist/index.json --test-key
+          python scripts/sign_index.py verify dist/index.json \
+            --public keys/TEST-KEY-not-trusted-by-release-builds.pub.pem
+      - uses: actions/upload-artifact@v4
+        with:
+          name: index-test-signed
+          path: dist/

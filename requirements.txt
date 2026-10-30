@@ -1,0 +1,7 @@
+# The scripts' dependencies, pinned. pydantic and numpy are what SAEngine's package validator
+# imports (keep pydantic at SAEngine's version: python/pyproject.toml, the bundled constraints).
+pydantic==2.14.1
+numpy==2.5.4
+cryptography==50.0.2
+pytest==9.2.0
+ruff==0.17.3

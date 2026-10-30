@@ -1,0 +1,242 @@
+{
+  "$defs": {
+    "ReleasePackage": {
+      "additionalProperties": false,
+      "description": "A package of one release: its files are assets of the same release.",
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "designCode",
+            "structureTemplate",
+            "buildingTemplate"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Country"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Region"
+        },
+        "author": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Author"
+        },
+        "licence": {
+          "description": "SPDX licence expression of the package.",
+          "title": "Licence",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "requires": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Requires"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "size": {
+          "description": "Size of the zip [bytes].",
+          "minimum": 0,
+          "title": "Size",
+          "type": "integer"
+        },
+        "sha256": {
+          "description": "SHA-256 of the zip.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "hooks": {
+          "description": "Whether the package holds Python hooks.",
+          "title": "Hooks",
+          "type": "boolean"
+        },
+        "hooksSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The code hash SAEngine's trust store computes for the hooks (saengine.codes.trust.code_hash): the code the reviewers saw.",
+          "title": "Hookssha256"
+        },
+        "previewSha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Previewsha256"
+        },
+        "file": {
+          "description": "Asset name of the zip: <id>-<version>.zip.",
+          "title": "File",
+          "type": "string"
+        },
+        "preview": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Asset name of the card image.",
+          "title": "Preview"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "name",
+        "version",
+        "licence",
+        "size",
+        "sha256",
+        "hooks",
+        "file"
+      ],
+      "title": "ReleasePackage",
+      "type": "object"
+    },
+    "Requires": {
+      "additionalProperties": false,
+      "description": "As ``pack.json`` ``requires``.",
+      "properties": {
+        "saengine": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Saengine"
+        },
+        "packages": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Packages",
+          "type": "object"
+        }
+      },
+      "title": "Requires",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "``packages.json``: the packages one release of a package repository publishes.",
+  "properties": {
+    "schema": {
+      "const": "saengine.packageRelease/1",
+      "default": "saengine.packageRelease/1",
+      "title": "Schema",
+      "type": "string"
+    },
+    "repository": {
+      "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$",
+      "title": "Repository",
+      "type": "string"
+    },
+    "tag": {
+      "title": "Tag",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "designCode",
+        "structureTemplate",
+        "buildingTemplate"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "packages": {
+      "items": {
+        "$ref": "#/$defs/ReleasePackage"
+      },
+      "title": "Packages",
+      "type": "array"
+    }
+  },
+  "required": [
+    "repository",
+    "tag",
+    "kind",
+    "packages"
+  ],
+  "title": "PackageRelease",
+  "type": "object",
+  "$id": "saengine.packageRelease/1"
+}
