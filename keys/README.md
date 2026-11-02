@@ -5,7 +5,7 @@ Only **public** keys are ever committed here.
 | File | Key id | Trusted by |
 | --- | --- | --- |
 | `TEST-KEY-not-trusted-by-release-builds.pub.pem` | `82af6b8cd5077d21` | CI and development builds only. **TEST KEY - not trusted by release builds.** Its private key is the SHA-256 of a seed published in `scripts/sign_index.py`, so anyone can sign with it: it proves nothing about who signed. |
-| `index-public.pem` | (not added yet) | Release builds of SAEngine. Added by the owner (below). |
+| `index-public.pem` | `79cc259c3d2aa2c7` | Release builds of SAEngine (added 2026-11-02). |
 
 The key id is the first 16 hex digits of the SHA-256 of the raw 32-byte Ed25519 public key; it
 is in every `index.json.sig`, and `sign_index.py` prints it.
