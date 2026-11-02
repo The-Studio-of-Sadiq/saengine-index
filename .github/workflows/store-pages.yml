@@ -1,0 +1,56 @@
+# The store site of a SAEngine package repository (docs/marketplace-plan.md, round M3).
+#
+# Copy this file to .github/workflows/store-pages.yml and build_store.py to
+# .github/store/build_store.py in each marketplace repository (saengine-design-codes,
+# saengine-structure-templates, saengine-building-templates, saengine-index). It builds the static
+# catalogue from the repository (and, when the repository publishes one, its latest index.json)
+# and force-pushes it as the only commit of the ORPHAN branch gh-pages: the branch shares no
+# history with main, and every build replaces it.
+#
+# The owner then enables GitHub Pages once per repository: Settings > Pages > Build and
+# deployment > Deploy from a branch > gh-pages / (root). Nothing here enables Pages by itself.
+name: Store site
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: store-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Latest index.json (the index repository only)
+        if: github.event.repository.name == 'saengine-index'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download --repo "${{ github.repository }}" --pattern index.json --dir _index || true
+      - name: Build the site
+        run: |
+          title="SAEngine ${{ github.event.repository.name }}"
+          title="${title//saengine-/}"
+          args=(--repo . --out _site --title "$title")
+          if [ -f _index/index.json ]; then args+=(--index _index/index.json); fi
+          python -I .github/store/build_store.py "${args[@]}"
+      - name: Publish to the orphan gh-pages branch
+        run: |
+          cd _site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Store site from ${GITHUB_SHA::12}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages
