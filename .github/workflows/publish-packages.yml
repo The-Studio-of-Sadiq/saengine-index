@@ -1,0 +1,137 @@
+# Reusable: publish the new package versions of a package repository as a GitHub Release.
+# Called from each package repository on a tag packages-YYYY-MM-DD (and by hand as a dry run):
+#
+#   on:
+#     push: { tags: ["packages-*"] }
+#     workflow_dispatch:
+#   permissions: { contents: write }
+#   jobs:
+#     publish:
+#       uses: The-Studio-of-Sadiq/saengine-index/.github/workflows/publish-packages.yml@main
+#       with: { kind: designCode, dry-run: ${{ github.event_name == 'workflow_dispatch' }} }
+#       secrets: { index-dispatch-token: ${{ secrets.INDEX_DISPATCH_TOKEN }} }
+#
+# Steps: check every package; zip each <id>@<version> that no earlier release has
+# (scripts/package_release.py: reproducible zips, size and SHA-256 in packages.json); create the
+# release with the zips, previews and packages.json; ask saengine-index to rebuild the index.
+# A dry run builds the same files and keeps them as a workflow artifact, with no release.
+# Releases must be immutable (repository setting "Release immutability"): a pinned hash must
+# never change under its URL.
+name: Publish packages
+
+on:
+  workflow_call:
+    inputs:
+      kind:
+        required: true
+        type: string
+      dry-run:
+        description: Build the release files as an artifact only
+        required: false
+        type: boolean
+        default: false
+      saengine-ref:
+        required: false
+        type: string
+        default: feat/ui-ux-redesign
+      index-ref:
+        required: false
+        type: string
+        default: main
+    secrets:
+      index-dispatch-token:
+        description: A token that may send repository_dispatch to saengine-index (optional)
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Only a packages-* tag publishes
+        if: ${{ !inputs.dry-run && !startsWith(github.ref, 'refs/tags/packages-') }}
+        run: |
+          echo "::error::publish from a tag packages-YYYY-MM-DD (or run a dry run)"
+          exit 1
+      - uses: actions/checkout@v4
+        with:
+          path: packages
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Studio-of-Sadiq/saengine-index
+          ref: ${{ inputs.index-ref }}
+          path: index
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Studio-of-Sadiq/SAEngine
+          ref: ${{ inputs.saengine-ref }}
+          path: saengine
+          filter: blob:none
+          sparse-checkout: python/src
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r index/requirements.txt
+      - name: Check every package
+        env:
+          KIND: ${{ inputs.kind }}
+        run: |
+          python index/scripts/check_packages.py --repo packages --kind "$KIND" \
+            --saengine saengine --all
+      - name: Download the earlier releases' manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p previous
+          gh release list -R "$REPO" --limit 1000 --json tagName,isDraft \
+            --jq '.[] | select(.isDraft | not) | .tagName' > tags.txt
+          while read -r tag; do
+            gh release download "$tag" -R "$REPO" -p packages.json -D "previous/$tag" || true
+          done < tags.txt
+      - name: Build the release files
+        id: build
+        env:
+          KIND: ${{ inputs.kind }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.dry-run && 'dry-run' || github.ref_name }}
+        run: |
+          python index/scripts/package_release.py --repo packages --kind "$KIND" \
+            --repository "$REPO" --tag "$TAG" --saengine saengine --out dist \
+            --previous $(find previous -name packages.json)
+          python index/scripts/package_release.py --count dist/packages.json >> "$GITHUB_OUTPUT"
+      - name: Keep the files as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-release-${{ inputs.dry-run && 'dry-run' || github.ref_name }}
+          path: dist/
+      - name: Create the release
+        if: ${{ !inputs.dry-run && steps.build.outputs.count != '0' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          python index/scripts/package_release.py --notes dist/packages.json > notes.md
+          gh release create "$TAG" -R "$REPO" --verify-tag --title "$TAG" \
+            --notes-file notes.md dist/*
+      - name: Ask saengine-index to rebuild the index
+        if: ${{ !inputs.dry-run && steps.build.outputs.count != '0' }}
+        env:
+          GH_TOKEN: ${{ secrets.index-dispatch-token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::no INDEX_DISPATCH_TOKEN: run saengine-index's Build index by hand"
+            exit 0
+          fi
+          gh api repos/The-Studio-of-Sadiq/saengine-index/dispatches \
+            -f event_type=packages-released -f "client_payload[repository]=$REPO" \
+            -f "client_payload[tag]=$TAG"

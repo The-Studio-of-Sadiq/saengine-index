@@ -1,0 +1,20 @@
+{
+  "schema": "saengine.packageSources/1",
+  "sources": [
+    {
+      "repository": "The-Studio-of-Sadiq/saengine-design-codes",
+      "kind": "designCode",
+      "source": "official"
+    },
+    {
+      "repository": "The-Studio-of-Sadiq/saengine-structure-templates",
+      "kind": "structureTemplate",
+      "source": "official"
+    },
+    {
+      "repository": "The-Studio-of-Sadiq/saengine-building-templates",
+      "kind": "buildingTemplate",
+      "source": "official"
+    }
+  ]
+}

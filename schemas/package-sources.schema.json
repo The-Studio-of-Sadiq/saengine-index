@@ -1,0 +1,69 @@
+{
+  "$defs": {
+    "Source": {
+      "additionalProperties": false,
+      "description": "A package repository whose releases the index merges.",
+      "properties": {
+        "repository": {
+          "description": "GitHub owner/name.",
+          "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$",
+          "title": "Repository",
+          "type": "string"
+        },
+        "kind": {
+          "description": "The one kind of package the repository publishes.",
+          "enum": [
+            "designCode",
+            "structureTemplate",
+            "buildingTemplate"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "default": "official",
+          "enum": [
+            "official",
+            "community"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "tagPattern": {
+          "default": "packages-*",
+          "description": "Glob of the release tags that publish packages.",
+          "title": "Tagpattern",
+          "type": "string"
+        }
+      },
+      "required": [
+        "repository",
+        "kind"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "saengine.packageSources/1",
+      "default": "saengine.packageSources/1",
+      "title": "Schema",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "title": "Sources",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sources"
+  ],
+  "title": "Sources",
+  "type": "object",
+  "$id": "saengine.packageSources/1"
+}
